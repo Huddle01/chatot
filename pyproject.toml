@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "chatot"
+version = "0.1.0"
+description = ""
+authors = ["Akash Mondal <akmo3901@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.13"
+huddle01 = "^1.0.11"
+python-dotenv = "^1.0.1"
+numpy = "^2.2.4"
+pydub = "^0.25.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
