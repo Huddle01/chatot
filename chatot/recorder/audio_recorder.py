@@ -1,58 +1,91 @@
-import wave
 import logging
-import os
-from datetime import datetime
-import numpy as np
+import asyncio
+import av
 
-
-logging.basicConfig(level=logging.INFO, 
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
-SAMPLE_RATE = 48000 
-CHANNELS = 1
-SAMPLE_WIDTH = 2
 
-class AudioRecorder:
-    def __init__(self, directory="recordings"):
-        self.directory = directory
-        self.frames = []
-        self.is_recording = False
-        self.current_filename = None
-        
-        os.makedirs(directory, exist_ok=True)
-        
-    def generate_filename(self):
-        """Generate a unique filename based on current timestamp"""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        peer_id = "unknown" 
-        return os.path.join(self.directory, f"audio_{timestamp}_{peer_id}.wav")
-        
-    def start_recording(self):
-        self.frames = []
-        self.is_recording = True
-        self.current_filename = self.generate_filename()
-        logger.info(f"Started recording to {self.current_filename}")
-        
-    def add_audio_data(self, audio_data):
-        if self.is_recording:
-            self.frames.append(audio_data)
-            
-    def stop_recording(self):
-        if not self.is_recording or not self.current_filename:
+class WebRTCMediaRecorder:
+    """
+    Records media from a RemoteStreamTrack to a file.
+    """
+
+    def __init__(self, track, output_path: str, format: str | None = None):
+        """
+        Initialize the recorder with a RemoteStreamTrack.
+
+        Args:
+            track: The RemoteStreamTrack object to record from.
+            output_path: Path where the recorded file will be saved.
+            format: Output format (determined from filename extension if None).
+        """
+        self.track = track
+        self.output_path = output_path
+        self.format = format
+        self.recording = False
+        self.task = None
+        self.container = None
+        self.stream = None
+
+    async def start(self):
+        """Start recording media."""
+        if self.recording:
             return
 
-        self.is_recording = False
-        
-        with wave.open(self.current_filename, 'wb') as wf:
-            wf.setnchannels(CHANNELS)
-            wf.setsampwidth(SAMPLE_WIDTH)
-            wf.setframerate(SAMPLE_RATE)
-            
-            if self.frames:
-                audio_data = np.concatenate(self.frames)
-                wf.writeframes(audio_data.tobytes())
-                
-        logger.info(f"Recording saved to {self.current_filename}")
-        return self.current_filename
+        self.recording = True
+        self.task = asyncio.create_task(self._record())
 
+    async def stop(self):
+        """Stop recording media."""
+        if not self.recording:
+            return
+
+        self.recording = False
+        if self.task:
+            self.task.cancel()
+            try:
+                await self.task
+            except asyncio.CancelledError:
+                pass
+            self.task = None
+
+        if self.container:
+            self.container.close()
+            self.container = None
+            self.stream = None
+
+    async def _record(self):
+        """Record media from the RemoteStreamTrack."""
+        try:
+            # Create output container
+            self.container = av.open(self.output_path, mode="w", format=self.format)
+
+            # Create appropriate stream
+            if self.track.kind == "audio":
+                self.stream = self.container.add_stream("mp3")
+            else:
+                logger.error("Cannot record video streams")
+                return
+
+            # Record frames
+            while self.recording:
+                frame = await self.track.recv()
+
+                # Encode and write the packet
+                for packet in self.stream.encode(frame):
+                    self.container.mux(packet)
+
+            # Flush remaining packets
+            for packet in self.stream.encode(None):
+                self.container.mux(packet)
+
+        except Exception as e:
+            print(f"Error recording media: {e}")
+        finally:
+            if self.container:
+                self.container.close()
+                self.container = None
+                self.stream = None

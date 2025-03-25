@@ -6,6 +6,10 @@ __pycache__/
 # C extensions
 *.so
 
+# Custom
+recordings/
+.DS_Store
+
 # Distribution / packaging
 .Python
 build/
@@ -172,4 +176,3 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
-

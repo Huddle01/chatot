@@ -1,3 +1,3 @@
-from .audio_recorder import AudioRecorder
+from .audio_recorder import WebRTCMediaRecorder
 
-__all__ = ["AudioRecorder"]
+__all__ = ["WebRTCMediaRecorder"]

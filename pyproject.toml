@@ -5,13 +5,20 @@ description = ""
 authors = ["Akash Mondal <akmo3901@gmail.com>"]
 readme = "README.md"
 
+[tool.poetry.scripts]
+fmt = "scripts:fmt"
+check = "scripts:check"
+
+[tool.ruff]
+exclude = ["proto"]
+
 [tool.poetry.dependencies]
 python = "^3.13"
-huddle01 = "^1.0.11"
+huddle01 = "1.1.0a3"
 python-dotenv = "^1.0.1"
 numpy = "^2.2.4"
 pydub = "^0.25.1"
-
+ruff = ">=0.6.0,<=0.9.1"
 
 [build-system]
 requires = ["poetry-core"]
