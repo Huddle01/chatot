@@ -14,11 +14,12 @@ exclude = ["proto"]
 
 [tool.poetry.dependencies]
 python = "^3.13"
-huddle01 = "1.1.0a3"
+huddle01 = "1.1.0"
 python-dotenv = "^1.0.1"
 numpy = "^2.2.4"
 pydub = "^0.25.1"
 ruff = ">=0.6.0,<=0.9.1"
+boto3 = "^1.37.19"
 
 [build-system]
 requires = ["poetry-core"]

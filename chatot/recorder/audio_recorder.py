@@ -1,5 +1,6 @@
 import logging
 import asyncio
+from aiortc.mediastreams import MediaStreamError
 import av
 
 logging.basicConfig(
@@ -46,10 +47,6 @@ class WebRTCMediaRecorder:
         self.recording = False
         if self.task:
             self.task.cancel()
-            try:
-                await self.task
-            except asyncio.CancelledError:
-                pass
             self.task = None
 
         if self.container:
@@ -71,21 +68,29 @@ class WebRTCMediaRecorder:
                 return
 
             # Record frames
-            while self.recording:
-                frame = await self.track.recv()
+            while self.recording and self.track.readyState == "live":
+                try:
+                    frame = await self.track.recv()
 
-                # Encode and write the packet
-                for packet in self.stream.encode(frame):
+                    # Encode and write the packet
+                    for packet in self.stream.encode(frame):
+                        self.container.mux(packet)
+                except MediaStreamError:
+                    logger.warn(
+                        "No more frame available in track, exiting recording..."
+                    )
+                    break
+
+        except asyncio.CancelledError:
+            logger.info("Received Closing Signal")
+        finally:
+            # Flushing any remaining packets
+            if self.container and self.stream:
+                for packet in self.stream.encode(None):
                     self.container.mux(packet)
 
-            # Flush remaining packets
-            for packet in self.stream.encode(None):
-                self.container.mux(packet)
-
-        except Exception as e:
-            print(f"Error recording media: {e}")
-        finally:
             if self.container:
+                logger.info("Closing container")
                 self.container.close()
                 self.container = None
                 self.stream = None

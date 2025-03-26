@@ -1,12 +1,12 @@
 fmt:
 	@echo "Formatting ai-experiments code"
 	@poetry run python -m ruff format
-	@echo "Formatted ai-experiments code"
+	@echo "Formatted chatot code"
 
 fix:
 	@echo "Checking ai-experiments code"
 	@poetry run python -m ruff check --fix
-	@echo "Checked ai-experiments code
+	@echo "Checked chatot code"
 
 run:
 	@echo "Running chatot"

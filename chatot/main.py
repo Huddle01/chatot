@@ -32,7 +32,7 @@ async def main():
     try:
         await huddle_manager.join_room(room_id=ROOM_ID)
 
-        await asyncio.sleep(30)
+        await asyncio.sleep(10)
         await huddle_manager.leave_room()
 
     except Exception as e:
@@ -42,6 +42,7 @@ async def main():
         if huddle_manager.room:
             await huddle_manager.leave_room()
             logger.info("Room cleanup completed")
+
 
 if __name__ == "__main__":
     # Run the async main function

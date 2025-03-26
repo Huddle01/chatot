@@ -1,21 +1,22 @@
-from huddle01 import (
+from huddle01 import HuddleClient, HuddleClientOptions
+from huddle01.access_token import (
+    Permissions,
     AccessToken,
     AccessTokenData,
     AccessTokenOptions,
-    HuddleClient,
-    HuddleClientOptions,
     Role,
-    Room,
 )
-import logging
-import json
-
-from huddle01.access_token import Permissions
 from huddle01.local_peer import LocalPeerEvents
 from huddle01.handlers.local_peer_handler import NewConsumerAdded
-from huddle01.room import RoomEvents, RoomEventsData
+from huddle01.room import RoomEvents, RoomEventsData, Room
+from pymediasoup.consumer import MediaStreamTrackKind
 
 from chatot.recorder import WebRTCMediaRecorder
+from chatot.uploader import upload_file
+from chatot.utils.main import get_random_string
+
+import logging
+import json
 import pathlib
 
 # Configure logging
@@ -77,30 +78,43 @@ class Huddle01Manager:
 
                 logger.info(f"✅ New consumer created: {consumer.id=}")
 
-                if consumer.kind == "audio":
+                if consumer.kind and consumer.kind.value == "audio":
                     logger.info(
                         f"Audio consumer detected (ID: {consumer.id}), setting up recording"
                     )
                     track = consumer.track
                     format = "mp3"
+                    audio_file_name = f"{remote_peer_id}-{get_random_string(4)}.{format}"
+                    audio_file_path = f"{pathlib.Path().resolve()}/recordings/{audio_file_name}"
                     if track:
+                        logger.info(f"✅ Starting to record track: {audio_file_name}")
                         audioRecorder = WebRTCMediaRecorder(
                             format=format,
-                            output_path=f"{pathlib.Path().resolve()}/recordings/{remote_peer_id}.{format}",
+                            output_path=audio_file_path,
                             track=track,
                         )
                         await audioRecorder.start()
-                        logger.info("✅ Starting to record track")
                     else:
                         logger.warning("🔔 Track not found or not in ready state")
 
-                    @consumer.observer.on("close")
+                    @consumer._observer.on("close")
                     async def on_close():
                         logger.info(
                             f"Consumer {consumer.id} closed, stopping recording"
                         )
                         if audioRecorder:
                             await audioRecorder.stop()
+
+                            logger.info("⬆️ Uploading file to bucket")
+
+                            try:
+                                uploaded_file_url = upload_file(
+                                    file_name=f"recordings/{audio_file_name}",
+                                )
+                                logger.info(f"Uploaded file url: {uploaded_file_url}")
+                            except Exception as e:
+                                logger.error(f"Error uploading file: {e}")
+
                         logger.info("✅ Recorder stopped")
 
             @room.on(RoomEvents.ConsumerClosed)
@@ -114,9 +128,12 @@ class Huddle01Manager:
 
     async def leave_room(self):
         """
-        Leave a Huddle01 room
+        Leave room by closing consumers and producer, close socket connection and reset state
         """
         if self.local_peer:
             await self.local_peer.close()
+            self.room = None
+            self.local_peer = None
+            await self.client.close()
 
         logger.info("Room left successfully")
