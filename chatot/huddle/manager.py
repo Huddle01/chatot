@@ -9,7 +9,6 @@ from huddle01.access_token import (
 from huddle01.local_peer import LocalPeerEvents
 from huddle01.handlers.local_peer_handler import NewConsumerAdded
 from huddle01.room import RoomEvents, RoomEventsData, Room
-from pymediasoup.consumer import MediaStreamTrackKind
 
 from chatot.recorder import WebRTCMediaRecorder
 from chatot.uploader import upload_file
@@ -38,7 +37,7 @@ class Huddle01Manager:
         api_key (str): The API key for authentication with Huddle01 services.
     """
 
-    def __init__(self, project_id, api_key):
+    def __init__(self, project_id: str, api_key: str):
         self.project_id = project_id
         self.api_key = api_key
         options = HuddleClientOptions(autoConsume=True, volatileMessaging=False)
