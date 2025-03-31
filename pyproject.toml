@@ -21,6 +21,7 @@ pydub = "^0.25.1"
 ruff = ">=0.6.0,<=0.9.1"
 boto3 = "^1.37.19"
 flask = { extras = ["async"], version = "^3.1.0" }
+requests = "^2.32.3"
 
 [build-system]
 requires = ["poetry-core"]

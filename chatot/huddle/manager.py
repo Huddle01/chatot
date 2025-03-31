@@ -18,6 +18,8 @@ import logging
 import json
 import pathlib
 
+from chatot.utils.webhook_sender import WebhookSender
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -44,6 +46,7 @@ class Huddle01Manager:
         self.client = HuddleClient(project_id=project_id, options=options)
         self.local_peer = None
         self.room = None
+        self.peer_id = None
 
     async def join_room(self, room_id: str) -> Room:
         """
@@ -67,6 +70,7 @@ class Huddle01Manager:
 
             await room.connect()
             self.local_peer = room.local_peer
+            self.peer_id = self.local_peer.peer_id
             self.room = room
 
             @room.local_peer.on(LocalPeerEvents.NewConsumer)
@@ -111,6 +115,9 @@ class Huddle01Manager:
                                     file_name=f"recordings/{audio_file_name}",
                                 )
                                 logger.info(f"Uploaded file url: {uploaded_file_url}")
+                                if self.peer_id:
+                                    webhook_sender = WebhookSender(endpoint_url=None)
+                                    webhook_sender.send_webhook(peer_id=self.peer_id, audio_file_url=uploaded_file_url)
                             except Exception as e:
                                 logger.error(f"Error uploading file: {e}")
 
