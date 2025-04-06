@@ -1,3 +1,4 @@
+import asyncio
 from huddle01 import HuddleClient, HuddleClientOptions
 from huddle01.access_token import (
     Permissions,
@@ -25,6 +26,22 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+def onStop(audio_file_name: str, peer_id: str):
+    logger.info("⬆️ Uploading file to bucket")
+
+    try:
+        uploaded_file_url = upload_file(
+            file_name=f"recordings/{audio_file_name}",
+        )
+        logger.info(f"Uploaded file url: {uploaded_file_url}")
+        if peer_id:
+            webhook_sender = WebhookSender(endpoint_url=None)
+            webhook_sender.send_webhook(peer_id=peer_id, audio_file_url=uploaded_file_url)
+    except Exception as e:
+        logger.error(f"Error uploading file: {e}")
+
+    logger.info("✅ Recorder stopped")
 
 
 class Huddle01Manager:
@@ -60,7 +77,7 @@ class Huddle01Manager:
             access_token_data: AccessTokenData = AccessTokenData(
                 api_key=self.api_key,
                 room_id=room_id,
-                role=Role.HOST,
+                role=Role.BOT,
                 permissions=bot_permissions,
                 options=access_token_options,
             )
@@ -91,12 +108,30 @@ class Huddle01Manager:
                     audio_file_path = f"{pathlib.Path().resolve()}/recordings/{audio_file_name}"
                     if track:
                         logger.info(f"✅ Starting to record track: {audio_file_name}")
+
                         audioRecorder = WebRTCMediaRecorder(
                             format=format,
                             output_path=audio_file_path,
                             track=track,
+                            loop=asyncio.get_event_loop()
                         )
                         await audioRecorder.start()
+
+                        def on_recording_complete():
+                            logger.info("⬆️ Uploading file to bucket")
+
+                            try:
+                                uploaded_file_url = upload_file(
+                                    file_name=f"recordings/{audio_file_name}",
+                                )
+                                logger.info(f"Uploaded file url: {uploaded_file_url}")
+                                if self.peer_id:
+                                    webhook_sender = WebhookSender(endpoint_url=None)
+                                    webhook_sender.send_webhook(peer_id=remote_peer_id, audio_file_url=uploaded_file_url)
+                            except Exception as e:
+                                logger.error(f"Error uploading file: {e}")
+
+                        audioRecorder.once("completed", on_recording_complete)
                     else:
                         logger.warning("🔔 Track not found or not in ready state")
 
@@ -108,24 +143,14 @@ class Huddle01Manager:
                         if audioRecorder:
                             await audioRecorder.stop()
 
-                            logger.info("⬆️ Uploading file to bucket")
-
-                            try:
-                                uploaded_file_url = upload_file(
-                                    file_name=f"recordings/{audio_file_name}",
-                                )
-                                logger.info(f"Uploaded file url: {uploaded_file_url}")
-                                if self.peer_id:
-                                    webhook_sender = WebhookSender(endpoint_url=None)
-                                    webhook_sender.send_webhook(peer_id=self.peer_id, audio_file_url=uploaded_file_url)
-                            except Exception as e:
-                                logger.error(f"Error uploading file: {e}")
-
-                        logger.info("✅ Recorder stopped")
 
             @room.on(RoomEvents.ConsumerClosed)
             async def on_consumer_closed(data: RoomEventsData.ConsumerClosed):
                 logger.info(f"✅ Consumer Closed: {data['consumer_id']=}")
+
+            @room.on(RoomEvents.RoomClosed)
+            async def on_room_closed(data: RoomEventsData.RoomClosed):
+                logger.info(f"✅ Room Closed: {data['room_id']=}")
 
             return room
         except Exception as e:

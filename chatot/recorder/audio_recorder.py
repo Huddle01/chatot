@@ -2,6 +2,7 @@ import logging
 import asyncio
 from aiortc.mediastreams import MediaStreamError
 import av
+from pyee import AsyncIOEventEmitter
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -9,12 +10,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-class WebRTCMediaRecorder:
+class WebRTCMediaRecorder(AsyncIOEventEmitter):
     """
     Records media from a RemoteStreamTrack to a file.
     """
 
-    def __init__(self, track, output_path: str, format: str | None = None):
+    def __init__(self, track, output_path: str, loop=None, format: str | None = None):
         """
         Initialize the recorder with a RemoteStreamTrack.
 
@@ -30,6 +31,7 @@ class WebRTCMediaRecorder:
         self.task = None
         self.container = None
         self.stream = None
+        super(WebRTCMediaRecorder, self).__init__(loop=loop)
 
     async def start(self):
         """Start recording media."""
@@ -90,7 +92,10 @@ class WebRTCMediaRecorder:
                     self.container.mux(packet)
 
             if self.container:
-                logger.info("Closing container")
+                logger.info("✅ Closing container")
                 self.container.close()
                 self.container = None
                 self.stream = None
+
+            self.emit("completed")
+            logger.info("✅ Recorder stopped")
