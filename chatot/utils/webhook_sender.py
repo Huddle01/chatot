@@ -15,7 +15,7 @@ class WebhookSender:
             cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self, endpoint_url=None):
+    def __init__(self, endpoint_url=None, webhook_secret=None):
         """
         Initialize the WebhookSender with the target endpoint URL.
         Endpoint URL is required only on first initialization.
@@ -28,12 +28,13 @@ class WebhookSender:
             if endpoint_url is None:
                 raise ValueError("endpoint_url is required for first initialization")
             self.endpoint_url = endpoint_url
+            self.webhook_secet = webhook_secret
             self._initialized = True
             print(f"Webhook Sender Initialised: {endpoint_url}")
         elif endpoint_url is not None:
             print("Warning: WebhookSender is already initialized. Ignoring new endpoint URL.")
 
-    def send_webhook(self, peer_id, audio_file_url):
+    def send_webhook(self, peer_id: str, audio_file_url: str):
         """
         Send a webhook with the specified peer ID and audio file URL.
 
@@ -49,11 +50,12 @@ class WebhookSender:
         """
         payload = {
             "peerId": peer_id,
-            "audioFile": audio_file_url
+            "recording_file_url": audio_file_url
         }
 
         headers = {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "x-api-key": self.webhook_secet
         }
 
         try:
