@@ -47,14 +47,18 @@ class WebRTCMediaRecorder(AsyncIOEventEmitter):
             return
 
         self.recording = False
-        if self.task:
-            self.task.cancel()
-            self.task = None
 
         if self.container:
             self.container.close()
             self.container = None
             self.stream = None
+
+        self.emit("completed")
+        logger.info("✅ Recorder stopped")
+
+        if self.task:
+            self.task.cancel()
+            self.task = None
 
     async def _record(self):
         """Record media from the RemoteStreamTrack."""
@@ -93,11 +97,4 @@ class WebRTCMediaRecorder(AsyncIOEventEmitter):
                 for packet in self.stream.encode(None):
                     self.container.mux(packet)
 
-            if self.container:
-                logger.info("✅ Closing container")
-                self.container.close()
-                self.container = None
-                self.stream = None
-
-            self.emit("completed")
-            logger.info("✅ Recorder stopped")
+            await self.stop()
