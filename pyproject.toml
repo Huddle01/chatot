@@ -8,6 +8,7 @@ readme = "README.md"
 [tool.poetry.scripts]
 fmt = "scripts:fmt"
 check = "scripts:check"
+start = "chatot.main:main"
 
 [tool.ruff]
 exclude = ["proto"]
