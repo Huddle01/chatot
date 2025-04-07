@@ -82,7 +82,6 @@ class WebRTCMediaRecorder(AsyncIOEventEmitter):
                     for packet in self.stream.encode(frame):
                         self.container.mux(packet)
 
-                    logger.info(f"Recording ongoing for output path: {self.output_path}")
                 except MediaStreamError:
                     logger.warn(
                         "No more frame available in track, exiting recording..."

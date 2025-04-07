@@ -106,7 +106,8 @@ class Huddle01Manager:
 
                             try:
                                 uploaded_file_url = upload_file(
-                                    file_name=f"recordings/{audio_file_name}",
+                                    file_name=audio_file_path,
+                                    object_name=f"recordings/{audio_file_name}"
                                 )
                                 logger.info(f"Uploaded file url: {uploaded_file_url}")
                                 webhook_sender = WebhookSender(endpoint_url=None)
