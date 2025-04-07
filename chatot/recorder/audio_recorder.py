@@ -3,6 +3,7 @@ import asyncio
 from aiortc.mediastreams import MediaStreamError
 import av
 from pyee import AsyncIOEventEmitter
+import os
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -63,6 +64,16 @@ class WebRTCMediaRecorder(AsyncIOEventEmitter):
     async def _record(self):
         """Record media from the RemoteStreamTrack."""
         try:
+            # Get the directory part of the path
+            output_dir = os.path.dirname(self.output_path)
+
+            # Create the directory if it doesn't exist
+            # os.makedirs() creates parent directories as needed (like mkdir -p)
+            # exist_ok=True prevents an error if the directory already exists
+            # Ensure it's not an empty string if path is just a filename
+            if output_dir:
+                os.makedirs(output_dir, exist_ok=True)
+
             # Create output container
             self.container = av.open(self.output_path, mode="w", format=self.format)
 
