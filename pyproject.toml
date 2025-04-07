@@ -15,7 +15,7 @@ exclude = ["proto"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-huddle01 = "1.1.0"
+huddle01 = "1.1.1a5"
 python-dotenv = "^1.0.1"
 numpy = "^2.2.4"
 pydub = "^0.25.1"

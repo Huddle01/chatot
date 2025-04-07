@@ -148,9 +148,7 @@ class Huddle01Manager:
             async def on_consumer_closed(data: RoomEventsData.ConsumerClosed):
                 logger.info(f"✅ Consumer Closed: {data['consumer_id']=}")
 
-            @room.on(RoomEvents.RoomClosed)
-            async def on_room_closed(data: RoomEventsData.RoomClosed):
-                logger.info(f"✅ Room Closed: {data['room_id']=}")
+
 
             return room
         except Exception as e:
