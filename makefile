@@ -10,7 +10,7 @@ fix:
 
 run:
 	@echo "Running chatot"
-	@poetry run python -d -m chatot.main
+	@poetry run python -m chatot.main
 
 update:
 	@poetry lock --no-cache
