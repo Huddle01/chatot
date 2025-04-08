@@ -10,16 +10,18 @@ from huddle01.access_token import (
 from huddle01.local_peer import LocalPeerEvents
 from huddle01.handlers.local_peer_handler import NewConsumerAdded
 from huddle01.room import RoomEvents, RoomEventsData, Room
+from huddle01.handlers import ConsumeOptions
 
 from chatot.recorder import WebRTCMediaRecorder
 from chatot.uploader import upload_file
 from chatot.utils.main import get_random_string
+from chatot.utils.webhook_sender import WebhookSender
+
+from pyee import AsyncIOEventEmitter
 
 import logging
 import json
 import pathlib
-
-from chatot.utils.webhook_sender import WebhookSender
 
 # Configure logging
 logging.basicConfig(
@@ -27,7 +29,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-class Huddle01Manager:
+class Huddle01Manager(AsyncIOEventEmitter):
     """
     Manager class for interacting with the Huddle01 API.
 
@@ -39,10 +41,11 @@ class Huddle01Manager:
         api_key (str): The API key for authentication with Huddle01 services.
     """
 
-    def __init__(self, project_id: str, api_key: str):
+    def __init__(self, project_id: str, api_key: str, loop=None,):
+        super(Huddle01Manager, self).__init__(loop=loop)
         self.project_id = project_id
         self.api_key = api_key
-        options = HuddleClientOptions(autoConsume=True, volatileMessaging=False)
+        options = HuddleClientOptions(autoConsume=False, volatileMessaging=False)
         self.client = HuddleClient(project_id=project_id, options=options)
         self.local_peer = None
         self.room = None
@@ -72,6 +75,27 @@ class Huddle01Manager:
             self.local_peer = room.local_peer
             self.peer_id = self.local_peer.peer_id
             self.room = room
+
+            remote_peers = self.local_peer.remote_peers
+
+            for _, peer in remote_peers.items():
+                audio_producer = peer.label_to_producers["audio"]
+                if audio_producer:
+                    await self.local_peer.consume(options=ConsumeOptions(producer_id=audio_producer.producer_id, producer_peer_id=audio_producer.peer_id))
+
+            @room.on(RoomEvents.RemoteProducerAdded)
+            async def on_new_remote_producer(data: RoomEventsData.RemoteProducerAdded):
+                if (data["label"] != "audio"):
+                    logger.info(f"{data["label"]} found, ignoring..")
+                    return
+
+                if self.local_peer:
+                    await self.local_peer.consume(options=ConsumeOptions(producer_id=data["producer_id"], producer_peer_id=data["remote_peer_id"]))
+
+            @room.once(RoomEvents.RoomClosed)
+            def on_room_close():
+                logger.info("Room Closed, emitting completed")
+                self.emit("completed")
 
             @room.local_peer.on(LocalPeerEvents.NewConsumer)
             async def on_new_consumer(eventData: NewConsumerAdded):
@@ -126,7 +150,6 @@ class Huddle01Manager:
                         )
                         if audioRecorder:
                             await audioRecorder.stop()
-
 
             @room.on(RoomEvents.ConsumerClosed)
             async def on_consumer_closed(data: RoomEventsData.ConsumerClosed):
