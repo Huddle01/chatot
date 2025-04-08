@@ -28,7 +28,13 @@ async def start_recording():
         return jsonify({"error": "Missing room_id parameter"}), 400
 
     if room_id in active_sessions:
-        return jsonify({"status": "already_running", "message": f"Session for room {room_id} is already active"}), 409
+        session = active_sessions[room_id]
+        session['stop_callback']()
+
+        # Wait for the thread to complete
+        session['thread'].join(timeout=1.0)
+
+        del active_sessions[room_id]
 
     load_dotenv()
 
