@@ -32,4 +32,6 @@ if __name__ == "__main__":
         logger.info("INITIALISING WEBHOOK ENDPOINT")
         WebhookSender(endpoint_url=WEBHOOK_URL, webhook_secret=WEBHOOK_SECRET)
     logger.info("Starting API Server")
-    apiHandler.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
+
+    from waitress import serve
+    serve(apiHandler, host='0.0.0.0', port=5000)
