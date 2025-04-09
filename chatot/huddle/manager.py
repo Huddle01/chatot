@@ -76,12 +76,12 @@ class Huddle01Manager(AsyncIOEventEmitter):
             self.peer_id = self.local_peer.peer_id
             self.room = room
 
-            remote_peers = self.local_peer.remote_peers
+            # remote_peers = self.local_peer.remote_peers
 
-            for _, peer in remote_peers.items():
-                audio_producer = peer.label_to_producers["audio"]
-                if audio_producer:
-                    await self.local_peer.consume(options=ConsumeOptions(producer_id=audio_producer.producer_id, producer_peer_id=audio_producer.peer_id))
+            # for _, peer in remote_peers.items():
+            #     audio_producer = peer.label_to_producers["audio"]
+            #     if audio_producer:
+            #         await self.local_peer.consume(options=ConsumeOptions(producer_id=audio_producer.producer_id, producer_peer_id=audio_producer.peer_id))
 
             @room.on(RoomEvents.RemoteProducerAdded)
             async def on_new_remote_producer(data: RoomEventsData.RemoteProducerAdded):
