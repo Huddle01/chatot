@@ -71,10 +71,6 @@ class Huddle01Manager(AsyncIOEventEmitter):
 
             room = await self.client.create(room_id=room_id, token=access_token)
 
-            await room.connect()
-            self.local_peer = room.local_peer
-            self.peer_id = self.local_peer.peer_id
-            self.room = room
 
             # remote_peers = self.local_peer.remote_peers
 
@@ -154,6 +150,10 @@ class Huddle01Manager(AsyncIOEventEmitter):
             @room.on(RoomEvents.ConsumerClosed)
             async def on_consumer_closed(data: RoomEventsData.ConsumerClosed):
                 logger.info(f"✅ Consumer Closed: {data['consumer_id']=}")
+
+            await room.connect()
+            self.local_peer = room.local_peer
+            self.peer_id = self.local_peer.peer_id
 
             return room
         except Exception as e:
