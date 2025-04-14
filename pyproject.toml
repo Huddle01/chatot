@@ -25,6 +25,7 @@ flask = { extras = ["async"], version = "^3.1.0" }
 requests = "^2.32.3"
 pyee = "11.1.0"
 waitress = "^3.0.2"
+psutil = "^7.0.0"
 
 [build-system]
 requires = ["poetry-core"]

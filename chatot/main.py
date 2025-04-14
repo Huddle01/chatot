@@ -5,10 +5,8 @@ from chatot.api import apiHandler
 from chatot.utils.webhook_sender import WebhookSender
 
 # Configure logging
-logging.basicConfig(
-    level=logging.NOTSET, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
+from chatot.log import base_logger
+logger = base_logger.getChild(__name__)
 
 load_dotenv()
 
@@ -22,7 +20,6 @@ if not API_KEY or not PROJECT_ID:
         "Missing required environment variables. Please set HUDDLE01_API_KEY, HUDDLE01_PROJECT_ID"
     )
     raise Exception("Invalid Environment Variables")
-
 
 if __name__ == "__main__":
     # Run the async main function

@@ -1,15 +1,13 @@
-from flask import Flask, make_response, request, jsonify
-import logging
 import os
-from dotenv import load_dotenv
-from .huddle_service import setup_room_manager_thread
-from .types import SessionInfo
+
+from flask import Flask, make_response, request, jsonify
 from typing import Dict
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
+from .huddle_service import setup_room_manager_thread
+from .types import SessionInfo
+from chatot.log import base_logger
+
+logger = base_logger.getChild(__name__)
 
 app = Flask(__name__)
 
@@ -28,15 +26,17 @@ async def start_recording():
         return jsonify({"error": "Missing room_id parameter"}), 400
 
     if room_id in active_sessions:
+        logger.info(f"Room {room_id} already exists. Stopping it first.")
         session = active_sessions[room_id]
-        session['stop_callback']()
+        try:
+            session['stop_callback']()
+            # Wait for the thread to complete
+            session['thread'].join(timeout=5.0)
+        except Exception as e:
+            logger.error(f"Error cleaning up existing session: {e}")
+        finally:
+            del active_sessions[room_id]
 
-        # Wait for the thread to complete
-        session['thread'].join(timeout=1.0)
-
-        del active_sessions[room_id]
-
-    load_dotenv()
 
     api_key = os.getenv("HUDDLE01_API_KEY")
     project_id = os.getenv("HUDDLE01_PROJECT_ID")
@@ -47,6 +47,9 @@ async def start_recording():
         )
         return jsonify({"error": "Invalid env setup"}), 500
 
+    # Log current number of active sessions
+    logger.info(f"Active sessions before adding new one: {len(active_sessions)}")
+
     # Setup room manager thread and get results
     result_container = setup_room_manager_thread(room_id, project_id, api_key)
 
@@ -56,7 +59,9 @@ async def start_recording():
     if status_code == 200:
         active_sessions[room_id] = {
             'thread': result_container['manager_thread'],
-            'stop_callback': result_container['stop_callback']
+            'stop_callback': result_container['stop_callback'],
+            'manager': result_container['manager'],
+            'loop': result_container['loop']
         }
 
         return jsonify({
@@ -80,17 +85,22 @@ async def stop_room():
 
     session = active_sessions[room_id]
 
-    session['stop_callback']()
-
-    # Wait for the thread to complete
-    session['thread'].join(timeout=5.0)
-
-    del active_sessions[room_id]
+    try:
+        session['stop_callback']()
+        # Wait for the thread to complete
+        session['thread'].join(timeout=5.0)
+    except Exception as e:
+        logger.error(f"Error stopping room {room_id}: {e}")
+        return jsonify({
+            "status": "error",
+            "message": f"Error stopping room: {str(e)}"
+        }), 500
+    finally:
+        # Always remove from active sessions, even if there was an error
+        del active_sessions[room_id]
+        logger.info(f"Room {room_id} removed from active sessions. Active count: {len(active_sessions)}")
 
     return jsonify({
         "status": "success",
         "message": f"Room {room_id} stopped successfully"
     }), 200
-
-if __name__ == "__main__":
-    app.run(debug=True)
